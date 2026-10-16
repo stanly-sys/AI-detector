@@ -11,7 +11,8 @@ const MAX_IMAGE_PIXELS = 40000000;
 const MAX_IMAGE_SIDE = 10000;
 const RATE_LIMIT = 5;
 const RATE_WINDOW = 60;
-const INFERENCE_TIMEOUT = 120;
+const INFERENCE_TIMEOUT = 240;
+const MODEL_SELECTIONS = ['both', 'sdxl_detector', 'community_forensics'];
 
 function respond(int $status, array $data): never
 {
@@ -48,28 +49,61 @@ function takeRateLimit(): bool
     return $allowed;
 }
 
-function dbSave(array $predictions): void
+function legacyScores(array $model): array
 {
-    $scores = [];
-    foreach ($predictions as $item) {
-        if (!is_array($item)) continue;
-        $label = strtolower((string) ($item['label'] ?? ''));
-        $value = $item['score'] ?? null;
-        if (in_array($label, ['artificial', 'human'], true) && is_numeric($value)) {
-            $score = (float) $value;
-            if (!is_finite($score) || $score < 0 || $score > 1) throw new RuntimeException('Invalid model score');
-            $scores[$label] = $score;
+    $ai = $model['ai_score'] ?? null;
+    $human = $model['human_score'] ?? null;
+    if (!is_numeric($ai) || !is_numeric($human)) throw new RuntimeException('Missing model scores');
+    $ai = (float) $ai; $human = (float) $human;
+    if (!is_finite($ai) || !is_finite($human) || $ai < 0 || $ai > 1 || $human < 0 || $human > 1) throw new RuntimeException('Invalid model scores');
+    return ['prediction' => $ai >= $human ? 'artificial' : 'human', 'ai_score' => $ai, 'human_score' => $human];
+}
+
+function saveLegacyAnalysis(array $models): bool
+{
+    // Preserve one historical row per image, preferring SDXL for compatibility.
+    foreach (['sdxl_detector', 'community_forensics'] as $id) {
+        if (($models[$id]['status'] ?? '') !== 'success') continue;
+        try {
+            $scores = legacyScores($models[$id]);
+            $pdo = new PDO('mysql:unix_socket=/run/mysqld/mysqld.sock;dbname=ai_image_detector;charset=utf8mb4', 'www-data', '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]);
+            $stmt = $pdo->prepare('INSERT INTO analysis_results (prediction, ai_score, human_score) VALUES (?, ?, ?)');
+            $stmt->execute([$scores['prediction'], $scores['ai_score'], $scores['human_score']]);
+            return true;
+        } catch (Throwable $e) {
+            logSecurity('legacy analysis history save failed: ' . $e->getMessage());
+            return false;
         }
     }
-    if (!isset($scores['artificial'], $scores['human'])) throw new RuntimeException('Missing model predictions');
-    $pdo = new PDO('mysql:unix_socket=/run/mysqld/mysqld.sock;dbname=ai_image_detector;charset=utf8mb4', 'www-data', '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]);
-    $stmt = $pdo->prepare('INSERT INTO analysis_results (prediction, ai_score, human_score) VALUES (?, ?, ?)');
-    $stmt->execute([$scores['artificial'] >= $scores['human'] ? 'artificial' : 'human', $scores['artificial'], $scores['human']]);
+    return false;
+}
+
+function saveModelHistory(string $analysisId, array $models): bool
+{
+    try {
+        $pdo = new PDO('mysql:unix_socket=/run/mysqld/mysqld.sock;dbname=ai_image_detector;charset=utf8mb4', 'www-data', '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]);
+        $stmt = $pdo->prepare('INSERT INTO model_analysis_results (analysis_id, model_id, model_version, prediction, ai_score, human_score, inference_time_ms, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        foreach (['sdxl_detector', 'community_forensics'] as $id) {
+            $model = $models[$id] ?? null;
+            if (!is_array($model) || ($model['status'] ?? '') === 'not_selected') continue;
+            $scores = ($model['status'] ?? '') === 'success' ? legacyScores($model) : ['prediction' => null, 'ai_score' => null, 'human_score' => null];
+            $time = $model['inference_time_ms'] ?? null;
+            $stmt->execute([$analysisId, $id, substr((string) ($model['model_version'] ?? 'unknown'), 0, 128), $scores['prediction'], $scores['ai_score'], $scores['human_score'], is_numeric($time) ? (int) round((float) $time) : null, $model['status']]);
+        }
+        return true;
+    } catch (Throwable $e) {
+        logSecurity('model-specific history save failed; apply migration 001: ' . $e->getMessage());
+        return false;
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Allow: POST');
     respond(405, ['success' => false, 'error' => 'Only POST requests are allowed.']);
+}
+$modelSelection = (string) ($_POST['models'] ?? 'both');
+if (!in_array($modelSelection, MODEL_SELECTIONS, true)) {
+    respond(400, ['success' => false, 'error' => 'Unsupported model selection.']);
 }
 if (isset($_SERVER['HTTP_ORIGIN'])) {
     $origin = parse_url((string) $_SERVER['HTTP_ORIGIN']);
@@ -127,8 +161,8 @@ $responseData = ['success' => false, 'error' => 'Image analysis failed.'];
 $wasTimedOut = false;
 try {
     if (!move_uploaded_file($tmp, $imagePath)) throw new RuntimeException('Could not safely move uploaded image');
-    $command = ['/usr/bin/timeout', '--signal=TERM', '--kill-after=5s', INFERENCE_TIMEOUT . 's', '/opt/ai-venv/bin/python', '/opt/ai-detector/detector.py', $imagePath];
-    $process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, ['OMP_NUM_THREADS' => '2', 'MKL_NUM_THREADS' => '2', 'OPENBLAS_NUM_THREADS' => '2']);
+    $command = ['/usr/bin/timeout', '--signal=TERM', '--kill-after=5s', INFERENCE_TIMEOUT . 's', '/opt/ai-venv/bin/python', '/opt/ai-detector/detector.py', $imagePath, $modelSelection];
+    $process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, ['PATH' => '/opt/ai-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'HOME' => '/tmp', 'TRANSFORMERS_OFFLINE' => '1', 'HF_HUB_OFFLINE' => '1', 'OMP_NUM_THREADS' => '2', 'MKL_NUM_THREADS' => '2', 'OPENBLAS_NUM_THREADS' => '2']);
     if (!is_resource($process)) throw new RuntimeException('Could not start detector');
     fclose($pipes[0]);
     stream_set_blocking($pipes[1], false);
@@ -151,12 +185,18 @@ try {
     if ($exitCode < 0 && $observedExitCode >= 0) $exitCode = $observedExitCode;
     if ($timedOut || $exitCode === 124 || $exitCode === 137) { $wasTimedOut = true; throw new RuntimeException('Inference deadline exceeded'); }
     if ($exitCode !== 0) { logSecurity('detector execution failed: ' . $errors); throw new RuntimeException('Detector execution failed'); }
-    $predictions = json_decode($output, true, 32, JSON_THROW_ON_ERROR);
-    if (!is_array($predictions) || !$predictions) throw new RuntimeException('Invalid detector response');
-    dbSave($predictions);
+    $inference = json_decode($output, true, 32, JSON_THROW_ON_ERROR);
+    $models = $inference['models'] ?? null;
+    if (!is_array($models) || !isset($models['sdxl_detector'], $models['community_forensics'])) throw new RuntimeException('Invalid detector response');
+    $hasSuccess = (($models['sdxl_detector']['status'] ?? '') === 'success') || (($models['community_forensics']['status'] ?? '') === 'success');
+    $analysisId = bin2hex(random_bytes(16));
+    if ($hasSuccess) saveLegacyAnalysis($models);
+    saveModelHistory($analysisId, $models);
     $c2pa = inspectC2pa($imagePath);
-    $responseStatus = 200;
-    $responseData = ['success' => true, 'predictions' => $predictions, 'c2pa' => $c2pa, 'synthid' => ['status' => 'not_configured', 'message' => 'SynthID detection is not connected.']];
+    $primary = (($models['sdxl_detector']['status'] ?? '') === 'success') ? $models['sdxl_detector'] : (($models['community_forensics']['status'] ?? '') === 'success' ? $models['community_forensics'] : null);
+    $legacyPredictions = $primary ? [['label' => 'artificial', 'score' => $primary['ai_score']], ['label' => 'human', 'score' => $primary['human_score']]] : [];
+    $responseStatus = $hasSuccess ? 200 : 503;
+    $responseData = ['success' => $hasSuccess, 'analysis_id' => $analysisId, 'models' => $models, 'predictions' => $legacyPredictions, 'c2pa' => $c2pa, 'synthid' => ['status' => 'not_configured', 'message' => 'SynthID detection is not connected.']];
 } catch (Throwable $e) {
     logSecurity('analysis failed: ' . $e->getMessage());
     $responseStatus = $wasTimedOut ? 504 : 500;

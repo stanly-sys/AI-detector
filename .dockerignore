@@ -20,6 +20,12 @@ venv/
 node_modules/
 tests/
 docs/
+data/
+datasets/
+evaluation-data/
+results/
+*.csv
+*.jsonl
 uploads/
 tmp/
 .idea/

@@ -4,7 +4,7 @@
 
 ### AI-image classification · Content Credentials verification · Analysis analytics
 
-**A single-model, Dockerized image-forensics web application built with PHP, Python, PyTorch, MySQL, and C2PA.**
+**A Dockerized, multi-model image-forensics web application built with PHP, Python, PyTorch, MySQL, and C2PA.**
 
 <p>
   <img alt="Ubuntu 24.04" src="https://img.shields.io/badge/Ubuntu-24.04-E95420?logo=ubuntu&logoColor=white" />
@@ -14,10 +14,11 @@
   <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-CPU%20Inference-EE4C2C?logo=pytorch&logoColor=white" />
   <img alt="MySQL" src="https://img.shields.io/badge/MySQL-Analytics-4479A1?logo=mysql&logoColor=white" />
   <img alt="C2PA" src="https://img.shields.io/badge/C2PA-Content%20Credentials-84CC16" />
+  <img alt="ML models" src="https://img.shields.io/badge/AI%20Models-SDXL%20%2B%20Community%20Forensics-8B5CF6" />
 </p>
 
-**Current baseline: `Organika/sdxl-detector` only.**  
-*The planned Community Forensics comparison model is intentionally **not included** in this version.*
+**Current detectors: [`Organika/sdxl-detector`](https://huggingface.co/Organika/sdxl-detector) and [`OwensLab/commfor-model-224`](https://huggingface.co/OwensLab/commfor-model-224).**  
+*Both remain available while their behavior is compared. No final model has been selected.*
 
 [Features](#-features) · [Quick Start](#-quick-start-with-docker) · [How It Works](#-how-it-works) · [API](#-api-reference) · [Security](#-security-notes) · [Troubleshooting](#-troubleshooting)
 
@@ -26,15 +27,16 @@
 ---
 
 > [!IMPORTANT]
-> This application provides **model estimates and provenance observations**, not proof that an image is authentic or AI-generated. In particular, a high classifier score is **not** a calibrated guarantee of correctness. Missing C2PA credentials do **not** imply that an image is human-created.
+> This application provides **model estimates and provenance observations**, not proof that an image is authentic or AI-generated. **Community Forensics has appeared more reliable than the SDXL detector in the project’s preliminary manual tests, but it is not 100% accurate; this is not a formal benchmark result.** High scores do **not** guarantee correctness. Missing C2PA credentials do **not** imply that an image is human-created.
 
 ## ✨ Features
 
 | Feature | What it does |
 |:--|:--|
 | 🖼️ **Image upload** | Drag-and-drop or select **JPEG, PNG, or WebP** images, with a **2 MB** application-level limit. |
-| 🧠 **AI classification** | Runs the locally stored [`Organika/sdxl-detector`](https://huggingface.co/Organika/sdxl-detector) model through Python, Transformers, and PyTorch. |
-| 📊 **Visual results** | Displays separate **AI** and **human** model scores with animated confidence bars and a loading indicator. |
+| 🧠 **Two AI detectors** | Runs **SDXL Detector** and **Community Forensics** as separate model options; the original SDXL model remains installed for comparison. |
+| 🎛️ **Model selection** | Choose **Both models**, **SDXL only**, or **Community only** in the upload interface. |
+| 📊 **Visual results** | Displays the selected model results, separate **AI** and **human** scores, and animated confidence bars. Use comparison mode to inspect differences. |
 | 🪪 **C2PA verification** | Uses [`c2patool`](https://github.com/contentauth/c2patool) to inspect signed Content Credentials and report their validation/trust status. |
 | 🧾 **Declared origin** | Reads supported C2PA `digitalSourceType` declarations, if available. |
 | 🗃️ **MySQL records** | Stores classification labels, scores, and timestamps; no need to retain the uploaded image. |
@@ -50,12 +52,15 @@ flowchart TD
     A[User selects an image] --> B[PHP upload validation]
     B -->|Invalid| X[JSON validation error]
     B -->|Accepted| C[Temporary image file]
-    C --> D[Python + PyTorch SDXL classifier]
+    C --> M{Model selection}
+    M -->|SDXL only or Both| D[SDXL detector]
+    M -->|Community only or Both| Q[Community Forensics]
     C --> E[c2patool: C2PA provenance check]
-    D --> F[Save classification to MySQL]
+    D --> F[Store model-specific result]
+    Q --> F
     F --> G[PHP JSON response]
     E --> G
-    G --> H[Frontend report + confidence bars]
+    G --> H[Frontend results + comparison]
     G --> I[Browser-local recent history]
     F --> J[Aggregate analytics endpoint]
     J --> K[Analytics dashboard]
@@ -66,7 +71,8 @@ flowchart TD
 
 | Component | Can report | Cannot establish by itself |
 |:--|:--|:--|
-| **SDXL classifier** | How strongly the model favors `artificial` versus `human`. | The actual origin of every image or detection of every AI generator. |
+| **SDXL classifier** | Its image-based `artificial` versus `human` classification. | Reliable results for every generator; it has produced questionable classifications during this project’s manual testing. |
+| **Community Forensics** | Its image-based classification of AI-generated versus real images. | Perfect accuracy or guaranteed authenticity; preliminary tests have been promising, not conclusive. |
 | **C2PA** | Whether signed credentials exist, their validation state, and any supported source declarations. | AI generation when no declaration exists; a trustworthy claim when the signer is untrusted. |
 | **SynthID** | **Manual external check only**, via the official site. | Automatic watermark results inside this application (not implemented). |
 
@@ -83,7 +89,8 @@ flowchart TD
 | Frontend | HTML, CSS, vanilla JavaScript |
 | Database | MySQL |
 | ML runtime | Python virtual environment, PyTorch (CPU), Hugging Face Transformers, Pillow |
-| Baseline detector | [`Organika/sdxl-detector`](https://huggingface.co/Organika/sdxl-detector) |
+| Detector A | [`Organika/sdxl-detector`](https://huggingface.co/Organika/sdxl-detector) (original model, retained) |
+| Detector B | [`OwensLab/commfor-model-224`](https://huggingface.co/OwensLab/commfor-model-224) (current preferred candidate for evaluation) |
 | Provenance | `c2patool` **0.28.1** with a configured C2PA trust-anchor file |
 | Process manager | Supervisor |
 | Container orchestration | Docker CLI (**no Docker Compose**) |
@@ -103,8 +110,8 @@ AI/
 │   ├── c2pa.php              # c2patool integration
 │   └── ...                   # Shared PHP helpers/content
 ├── ml/
-│   ├── detector.py           # Existing SDXL inference entry point
-│   └── ...                   # Local test images (do not commit private data)
+│   ├── detector.py           # Python inference entry point / compatibility layer
+│   └── ...                   # Model adapters and test resources (repository-dependent)
 ├── assets/
 │   ├── css/                  # Layout, styles and animations
 │   ├── js/                   # Upload, results and dashboard behavior
@@ -112,11 +119,7 @@ AI/
 └── README.md
 ```
 
-The downloaded model is stored in a **Docker volume**, not in the Git repository:
-
-```text
-/opt/models/sdxl-detector/
-```
+Pretrained model weights belong in the **persistent Docker model volume**, not in Git. The existing SDXL model uses `/opt/models/sdxl-detector/`; the Community Forensics installation uses its own location as configured in the project’s current model adapter. Do not remove either model while comparing them.
 
 ## 🚀 Quick Start with Docker
 
@@ -145,9 +148,9 @@ docker volume create ai-detector-models
 
 These commands are safe to repeat; they do **not** wipe existing named volumes.
 
-### 3. Download the baseline model (first-time setup only)
+### 3. Prepare model weights (first-time setup only)
 
-If you already downloaded the model into `ai-detector-models`, **skip this step**.
+If the model weights are already in `ai-detector-models`, **skip downloading them again**. The command below prepares the original SDXL model:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run --rm \
@@ -157,7 +160,9 @@ MSYS_NO_PATHCONV=1 docker run --rm \
   -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='Organika/sdxl-detector', local_dir='/opt/models/sdxl-detector')"
 ```
 
-The temporary setup container needs a **writable** model volume. The actual web container will mount the same volume **read-only**.
+**Community Forensics:** Its weight files and model-specific loader must also be prepared using the implementation in your current repository. Follow the repository’s model-installation script or deployment instructions; **do not assume SDXL’s download or `pipeline()` procedure also works for Community Forensics**.
+
+The temporary setup container needs a **writable** model volume. The actual web container mounts the model volume **read-only**. Preserve both models in that volume.
 
 ### 4. Start the application
 
@@ -242,13 +247,13 @@ curl -i --max-time 180 \
   http://127.0.0.1:8080/api/analyze.php
 ```
 
-**Expected:** HTTP `200` plus model predictions and C2PA status. The analysis may take longer on CPU because the current implementation can load the model per request.
+**Expected:** HTTP `200` with the executed model result(s), plus provenance information when checked. On the website, test **Both models**, **SDXL only**, and **Community only**. CPU inference can be slow; the currently configured model adapter and security limits control execution.
 
 ## 🔌 API Reference
 
 ### `POST /api/analyze.php`
 
-Uploads an image and returns the current single model's prediction, C2PA result, and SynthID integration status.
+Uploads an image for the **selected detector or detectors** and returns available model results, C2PA information where executed, and SynthID integration status. The model selector in the frontend supports **Both models**, **SDXL only**, and **Community only**.
 
 **Request:** `multipart/form-data` with form field `image` (JPEG, PNG, or WebP; max **2 MB**).
 
@@ -259,31 +264,17 @@ curl -sS --max-time 180 \
 ```
 
 <details>
-<summary><strong>Example successful JSON response</strong></summary>
+<summary><strong>What to expect in the response</strong></summary>
 
-```json
-{
-  "success": true,
-  "predictions": [
-    { "label": "artificial", "score": 0.9513 },
-    { "label": "human", "score": 0.0487 }
-  ],
-  "c2pa": {
-    "status": "not_found",
-    "message": "No C2PA Content Credentials found."
-  },
-  "synthid": {
-    "status": "not_configured",
-    "message": "SynthID detection is not connected."
-  }
-}
-```
+The current **multi-model** implementation returns classification information for whichever models ran. For each executed detector, use its returned label and score, not a score copied from the other detector. C2PA and SynthID are **independent** of the classifier's prediction.
 
-*Values are illustrative; real responses depend on the uploaded image. When C2PA credentials are found, the response may additionally include an `origin` object.*
+Use the request above to inspect the exact JSON keys for the checked-in version of `api/analyze.php`. Model-specific response keys may differ from the original single-model `predictions` format as the comparison feature evolves. Do **not** interpret these as ground-truth probabilities.
+
+For example, an actual manual test in the project's UI showed **Community only** reporting **0.22% AI score / 99.78% human score** on one image. This is a **single observed model output**, **not** an accuracy measurement or a guarantee about similar images.
 
 </details>
 
-Possible responses include `200` for successful analysis, `400` for invalid uploads, `405` for unsupported methods, and `500` if analysis fails. Additional security controls may produce `413`, `429`, or `503` where configured.
+Possible responses include `200` for successful analysis, `400` for invalid uploads, `405` for unsupported methods, and `500` if analysis fails. Additional security controls may produce `413`, `429`, or `503` where configured. A failure in one model should be reported clearly rather than misrepresented as a successful classification.
 
 ### `GET /api/stats.php`
 
@@ -306,6 +297,24 @@ curl -sS http://127.0.0.1:8080/api/stats.php
 ```
 
 *Example values only.* The stored analysis count includes successful requests, not a ground-truth measure of detection accuracy.
+
+## 🔬 Model Comparison and Current Observations
+
+| Model | Purpose | What has been observed so far | Current decision |
+|:--|:--|:--|:--|
+| **[SDXL Detector](https://huggingface.co/Organika/sdxl-detector)** | Original model specialized for identifying SDXL-like generated images. | Has produced some results that did not match expectations on manually tested photographs. | **Keep installed** as a baseline. |
+| **[Community Forensics](https://huggingface.co/OwensLab/commfor-model-224)** | Broader synthetic-image detection candidate. | **Appears to classify the images tested so far more convincingly than SDXL.** | **Preferred candidate for further testing**, not yet a proven winner. |
+
+> [!NOTE]
+> **Community Forensics is not 100% accurate.** It can still label AI-generated images as real, or real images as AI-generated. These notes reflect the project owner's *informal testing*, **not** results from a labeled evaluation dataset or a verified accuracy benchmark. A disagreement between the two models does not tell us which is correct.
+
+### Comparing results on the website
+
+1. Upload the **same image** and choose **Both models** to compare the two outputs.
+2. Alternatively choose **SDXL only** or **Community only** to inspect each model independently.
+3. Review the **AI score**, **human score**, and prediction for each selected model. Treat the scores as model outputs, not proof.
+4. For a fair final decision, collect images with **known real or AI-generated origins** and calculate accuracy, precision, recall, F1, false-positive rate, and processing time for each model.
+5. **Do not delete either model yet.** Model selection and removal are postponed until these tests are complete.
 
 ## 🪪 Interpreting C2PA Results
 
@@ -352,7 +361,9 @@ Only perform security testing on systems you own or have explicit permission to 
 ## 🧪 Testing Checklist
 
 - [ ] Upload a known JPEG/PNG/WebP image successfully.
-- [ ] Confirm AI and human model scores appear in the results card.
+- [ ] Confirm AI and human model scores appear for **Community only**, **SDXL only**, and **Both models**.
+- [ ] Compare both predictions on the **same** known-origin test image.
+- [ ] Confirm the browser correctly reports model disagreement rather than automatically picking a winner.
 - [ ] Confirm analytics increase after a successful analysis.
 - [ ] Upload a corrupted image and confirm a clean validation error.
 - [ ] Verify that uploads larger than 2 MB are rejected.
@@ -432,7 +443,7 @@ In this project's setup, `/run/mysqld` needs to permit Apache's `www-data` user 
 <details>
 <summary><strong>Model loading fails or downloads repeatedly</strong></summary>
 
-Verify the persistent volume contains `/opt/models/sdxl-detector` and that the application container mounts the model volume at `/opt/models:ro`. Initial downloads require the one-time writable preparation step above.
+Verify the persistent volume contains `/opt/models/sdxl-detector` and the configured Community Forensics weights, and that the application container mounts `/opt/models:ro`. Check each model adapter’s expected path rather than assuming they share an identical directory structure. Initial downloads require the one-time writable preparation step above.
 
 </details>
 
@@ -452,13 +463,14 @@ Use `MSYS_NO_PATHCONV=1` before Docker commands that include Linux filesystem pa
 
 ## 🗺️ Project Scope & Next Steps
 
-This repository revision is the **single-model baseline**. A later revision may add a second detector and a side-by-side model-comparison interface, but neither is a feature of this snapshot.
+This repository revision supports **two selectable detection models**: SDXL Detector and Community Forensics. **Community Forensics has performed better in the project owner’s preliminary hands-on checks, but its accuracy is not 100% and has not been formally measured.** Both models remain present while comparison continues.
 
-Areas for future work include **independent accuracy evaluation**, better inference performance, further security testing, richer provenance details, and authorized automatic watermark integrations where available.
+Future work includes **independent labeled-dataset evaluation**, a documented final model selection, better inference performance, further security testing, richer provenance details, and authorized automatic watermark integrations where available.
 
 ## 📚 References
 
 - [Organika SDXL Detector — Hugging Face](https://huggingface.co/Organika/sdxl-detector)
+- [OwensLab Community Forensics — Hugging Face](https://huggingface.co/OwensLab/commfor-model-224)
 - [c2patool — Content Authenticity Initiative](https://github.com/contentauth/c2patool)
 - [C2PA specification](https://c2pa.org/specifications/specifications/)
 - [Google SynthID](https://synthid.com/)
@@ -468,8 +480,8 @@ Areas for future work include **independent accuracy evaluation**, better infere
 
 <div align="center">
 
-**Built as a Computer Science project to explore AI-image classification and verifiable content provenance.**
+**Built as personal project to explore AI-image classification and verifiable content provenance.**
 
-*Assess model output critically. Verify provenance independently. Preserve test evidence.*
+*Compare both models critically. Neither is infallible. Verify provenance independently and preserve test evidence.*
 
 </div>

@@ -11,6 +11,11 @@
   const selectedImage = $("selectedImage");
   const chooseButton = $("chooseButton");
   const analyzeButton = $("analyzeButton");
+  const modelSelection = $("modelSelection");
+  const selectedModel = () => modelSelection.querySelector('input[name="models"]:checked')?.value || "both";
+  const disableModelSelection = (disabled) => {
+    modelSelection.querySelectorAll('input[name="models"]').forEach((input) => { input.disabled = disabled; });
+  };
   const removeButton = $("removeButton");
   const uploadMessage = $("uploadMessage");
   const reportImage = $("reportImage");
@@ -391,6 +396,89 @@
     });
   }
 
+  const modelIds = ["sdxl_detector", "community_forensics"];
+
+  function resetModelCard(modelId, state = "waiting", messageText = "No analysis run yet") {
+    const card = $(`card-${modelId}`);
+    card.dataset.state = state;
+    $(`${modelId}-status`).textContent = state === "loading" ? "Loading" : "Waiting";
+    $(`${modelId}-prediction`).textContent = messageText;
+    $(`${modelId}-ai-score`).textContent = "—";
+    $(`${modelId}-human-score`).textContent = "—";
+    $(`${modelId}-time`).textContent = "Processing time: —";
+    $(`${modelId}-version`).textContent = "";
+    card.querySelectorAll(".model-score-track span").forEach((bar) => { bar.style.width = "0%"; });
+    card.querySelectorAll(".model-score-track").forEach((track) => track.setAttribute("aria-valuenow", "0"));
+  }
+
+  function beginModelComparison(selection) {
+    for (const modelId of modelIds) {
+      const selected = selection === "both" || selection === modelId;
+      resetModelCard(modelId, selected ? "loading" : "not_selected", selected ? "Running model on this image…" : "Not run for this analysis");
+      $(`${modelId}-status`).textContent = selected ? "Loading" : "Not selected";
+    }
+    $("comparisonOutcome").classList.remove("is-disagree");
+    $("comparisonOutcome").textContent = selection === "both" ? "Both models are processing this image sequentially." : "The selected model is processing this image.";
+  }
+
+  function renderModelResult(modelId, result) {
+    const card = $(`card-${modelId}`);
+    if (!result || result.status === "not_selected") {
+      resetModelCard(modelId, "not_selected", "Not run for this analysis");
+      $(`${modelId}-status`).textContent = "Not selected";
+      return;
+    }
+    if (result.status !== "success") {
+      const state = result.status === "unavailable" ? "unavailable" : "error";
+      resetModelCard(modelId, state, result.error || (state === "unavailable" ? "Weights or dependencies unavailable" : "Model inference failed"));
+      $(`${modelId}-status`).textContent = state === "unavailable" ? "Unavailable" : "Error";
+      return;
+    }
+    const ai = Number(result.ai_score);
+    const human = Number(result.human_score);
+    if (!Number.isFinite(ai) || !Number.isFinite(human) || ai < 0 || ai > 1 || human < 0 || human > 1 || !["artificial", "human"].includes(result.prediction)) {
+      resetModelCard(modelId, "error", "Model returned invalid scores");
+      $(`${modelId}-status`).textContent = "Error";
+      return;
+    }
+    card.dataset.state = "success";
+    $(`${modelId}-status`).textContent = "Completed";
+    $(`${modelId}-prediction`).textContent = result.prediction === "artificial" ? "Likely AI-generated" : "Likely human-created";
+    $(`${modelId}-ai-score`).textContent = `${(ai * 100).toFixed(2)}%`;
+    $(`${modelId}-human-score`).textContent = `${(human * 100).toFixed(2)}%`;
+    const bars = card.querySelectorAll(".model-score-track span");
+    const tracks = card.querySelectorAll(".model-score-track");
+    [ai, human].forEach((score, i) => {
+      const percent = Math.max(0, Math.min(100, score * 100));
+      bars[i].style.width = `${percent}%`;
+      tracks[i].setAttribute("aria-valuenow", percent.toFixed(0));
+    });
+    const ms = Number(result.inference_time_ms);
+    $(`${modelId}-time`).textContent = Number.isFinite(ms) ? `Processing time: ${(ms / 1000).toFixed(2)} s` : "Processing time: unavailable";
+    $(`${modelId}-version`).textContent = result.model_version || "";
+  }
+
+  function renderModelComparison(results) {
+    modelIds.forEach((modelId) => renderModelResult(modelId, results?.[modelId]));
+    const sdxl = results?.sdxl_detector;
+    const commfor = results?.community_forensics;
+    const outcome = $("comparisonOutcome");
+    outcome.classList.remove("is-disagree");
+    if (sdxl?.status === "success" && commfor?.status === "success") {
+      if (sdxl.prediction === commfor.prediction) {
+        outcome.textContent = "Both models agree on the classification. Agreement does not establish that the classification is correct.";
+      } else {
+        outcome.textContent = "The models disagree on this image. This result requires further evaluation.";
+        outcome.classList.add("is-disagree");
+      }
+    } else if (sdxl?.status === "success" || commfor?.status === "success") {
+      const other = sdxl?.status === "success" ? commfor : sdxl;
+      outcome.textContent = other?.status === "not_selected" ? "The selected model completed this analysis." : "One model completed; the other did not. Review each status above.";
+    } else {
+      outcome.textContent = "No selected model completed successfully. Check model availability and server logs.";
+    }
+  }
+
   function clearImage() {
     selectedFile = null;
     if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -404,6 +492,9 @@
     removeButton.hidden = true;
     message("Choose an image to start analysis.");
     setReportState("sample");
+    modelIds.forEach((modelId) => resetModelCard(modelId));
+    $("comparisonOutcome").classList.remove("is-disagree");
+    $("comparisonOutcome").textContent = "Choose an image and run one or both models to compare their results.";
   }
 
   function selectImage(file) {
@@ -425,6 +516,9 @@
       return;
     }
     const nextUrl = URL.createObjectURL(file);
+    modelIds.forEach((modelId) => resetModelCard(modelId));
+    $("comparisonOutcome").classList.remove("is-disagree");
+    $("comparisonOutcome").textContent = "Run selected models to compare their results for this image.";
     const verifier = new Image();
     verifier.onload = () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -487,6 +581,10 @@
     // Prepare image for PHP upload
     const formData = new FormData();
     formData.append("image", selectedFile);
+    const selection = selectedModel();
+    formData.append("models", selection);
+    beginModelComparison(selection);
+    disableModelSelection(true);
 
     analyzeButton.disabled = true;
     analyzeButton.classList.add("is-analyzing");
@@ -501,29 +599,35 @@
       });
 
       const data = await response.json();
-
+      renderModelComparison(data.models);
+      if (data.c2pa) displayC2paResult(data.c2pa, data.synthid);
+      if (Array.isArray(data.predictions) && data.predictions.length) {
+        displayAnalysisResults(data.predictions);
+        window.dispatchEvent(new CustomEvent("ai:analysis-completed", { detail: { predictions: data.predictions } }));
+      }
       if (!response.ok || !data.success) {
+        if (data.models) {
+          message(data.error || "No selected model completed successfully.", "error");
+          return;
+        }
         throw new Error(data.error || "Analysis failed.");
       }
-
-      // Display actual AI predictions on the website
-      displayAnalysisResults(data.predictions);
-      displayC2paResult(data.c2pa);
-      window.dispatchEvent(
-        new CustomEvent("ai:analysis-completed", {
-          detail: {
-            predictions: data.predictions,
-          },
-        }),
-      );
-      message("Image analyzed successfully!", "ready");
+      const modelSuccesses = modelIds.filter((modelId) => data.models?.[modelId]?.status === "success").length;
+      message(selection === "both" && modelSuccesses === 1 ? "One model completed; the other did not return a result." : selection === "both" ? "Both model comparisons completed." : "Selected model analysis complete.", "ready");
     } catch (error) {
       console.error("Detection error:", error);
+      for (const modelId of modelIds) {
+        const selected = selection === "both" || selection === modelId;
+        resetModelCard(modelId, selected ? "error" : "not_selected", selected ? "Could not reach the inference service" : "Not run for this analysis");
+        $(`${modelId}-status`).textContent = selected ? "Error" : "Not selected";
+      }
+      $("comparisonOutcome").textContent = "The analysis request did not return model results.";
       message(error.message, "error");
     } finally {
       analyzeButton.disabled = false;
       analyzeButton.classList.remove("is-analyzing");
       analyzeButton.removeAttribute("aria-busy");
+      disableModelSelection(false);
     }
   });
 

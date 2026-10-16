@@ -1,0 +1,11 @@
+# Comparing image detector models
+
+The analysis page can run the existing SDXL Detector, Community Forensics, or both. When both are selected they run sequentially in one child process, and each result is displayed in its own card with status, scores, version, and measured inference time. A failure or missing checkpoint for one model does not discard a successful result from the other.
+
+SDXL Detector is the existing Hugging Face image-classification model (`Organika/sdxl-detector`), loaded from the preserved local pipeline directory. Its pipeline returns `artificial` and `human` class scores. Community Forensics is a separate ViT-Small patch-16 classifier with a 224-pixel input and a single binary logit. The integration constructs the matching `timm` architecture and strictly loads its pinned SafeTensors weights. It uses the upstream deterministic Resize(256), CenterCrop(224), tensor conversion, and ImageNet normalization. Both receive the same decoded RGB upload but have different architectures and learned decision boundaries.
+
+Scores are model outputs, not calibrated probabilities. Community Forensics emits a binary fake logit; the application applies sigmoid as the upstream evaluator does and maps it to `ai_score`/artificial. `human_score` is its complement. SDXL retains its pipeline scores. These score scales are not directly comparable as confidence values. A disagreement means the models selected different labels; it does not establish which model is correct.
+
+Community Forensics uses the upstream ViT-Small 224 checkpoint at a pinned revision. The app loads local safetensors only and does not fetch model files during inference. The published model targets generalization across image generators; it can still fail on out-of-distribution content, editing, compression, and domain shifts. Neither detector establishes provenance. See the [official model card](https://huggingface.co/OwensLab/commfor-model-224), [repository](https://github.com/JeongsooP/Community-Forensics), and [paper](https://arxiv.org/abs/2411.04125).
+
+For aggregate comparison on labeled data, use [MODEL_EVALUATION.md](MODEL_EVALUATION.md). Do not treat a single image comparison as a benchmark.

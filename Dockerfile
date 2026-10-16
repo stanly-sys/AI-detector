@@ -24,13 +24,31 @@ ENV PATH="/opt/ai-venv/bin:$PATH"
 
 
 # Install CPU version of PyTorch
-RUN pip install --no-cache-dir torch \
+RUN pip install --no-cache-dir "torch==2.7.1" \
     --index-url https://download.pytorch.org/whl/cpu
 
+RUN pip install --no-cache-dir --timeout 300 --retries 10 "torchvision==0.22.1" \
+    --index-url https://download.pytorch.org/whl/cpu
+
+
+
+# Install known previously working ML dependencies
+RUN pip install --no-cache-dir --timeout 300 --retries 10 \
+    "transformers==4.57.6" \
+    "pillow==12.3.0"
+
+# Verify Python dependency compatibility
+RUN pip check
+
 # Install model loading and image processing libraries
-RUN pip install --no-cache-dir \
+RUN pip install --no-cache-dir --timeout 300 --retries 10 \
     "transformers>=4.40,<5" \
-    "pillow>=10,<13"
+    "pillow>=10,<13" \
+    "timm==1.0.15" \
+    "safetensors>=0.4,<1" \
+    "huggingface-hub>=0.30,<2"
+
+RUN python -c "import torch, torchvision, timm, safetensors; print('torch', torch.__version__, 'torchvision', torchvision.__version__, 'timm', timm.__version__, 'safetensors', safetensors.__version__)"
 
 # Remove Apache's default webpage
 RUN rm -f /var/www/html/index.html
@@ -83,6 +101,11 @@ COPY php-security.ini /etc/php/8.3/apache2/conf.d/99-ai-security.ini
 
 # Copy Python AI detector into Ubuntu
 COPY ml/detector.py /opt/ai-detector/detector.py
+COPY ml/inference.py /opt/ai-detector/inference.py
+COPY ml/model_contract.py /opt/ai-detector/model_contract.py
+COPY ml/models/ /opt/ai-detector/models/
+COPY ml/prepare_community_model.py /opt/ai-detector/prepare_community_model.py
+COPY ml/evaluation/ /opt/ai-detector/evaluation/
 
 # Copy Supervisor configuration
 COPY supervisord.conf /etc/supervisor/conf.d/lamp.conf
