@@ -1,0 +1,496 @@
+/*
+ * MOTION LAYER — adapted from the original uploaded PHP interface.
+ * Keeps the existing layout/colors in style.css unchanged.
+ * Hover animations are intentionally subtle and run only while interacting.
+ * Scrolling and touch reactions are managed in assets/js/app.js.
+ */
+
+/* 1. Hand-painted lime fill: left-to-right on every highlighted phrase. */
+.highlight::before {
+  transform: scaleX(0) rotate(-1.5deg);
+  transform-origin: left center;
+  animation: hero-lime-sweep 950ms 530ms cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes hero-lime-sweep {
+  to { transform: scaleX(1) rotate(-1.5deg); }
+}
+.highlight svg path {
+  stroke-dasharray: 340;
+  stroke-dashoffset: 340;
+  animation: accent-draw 820ms 1050ms cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes accent-draw { to { stroke-dashoffset: 0; } }
+
+/* The other three green highlighting treatments paint only after scrolling into view. */
+.underline-accent::after {
+  transform: scaleX(0) rotate(-2deg);
+  transform-origin: left center;
+}
+.is-visible .underline-accent::after {
+  animation: feature-lime-sweep 850ms 180ms cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes feature-lime-sweep {
+  to { transform: scaleX(1) rotate(-2deg); }
+}
+.highlight-small,
+.about-text h2 em {
+  background: linear-gradient(transparent 59%, var(--lime) 59%) left bottom / 0% 100% no-repeat;
+}
+.is-visible .highlight-small,
+.about-text.is-visible h2 em {
+  animation: lime-band-sweep 900ms 150ms cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes lime-band-sweep { to { background-size: 100% 100%; } }
+/* If JS never loads, do not leave the lower-page highlights unpainted. */
+html:not(.motion-enabled) .underline-accent::after { transform: rotate(-2deg); }
+html:not(.motion-enabled) .highlight-small,
+html:not(.motion-enabled) .about-text h2 em { background-size: 100% 100%; }
+
+/* 2. Page-load entrance, same staggered upward reveal as the first design. */
+@keyframes intro-rise {
+  from { opacity: 0; transform: translateY(23px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-copy > .eyebrow { animation: intro-rise 680ms 60ms both cubic-bezier(.2,.8,.2,1); }
+.hero-copy > h1 { animation: intro-rise 720ms 150ms both cubic-bezier(.2,.8,.2,1); }
+.hero-copy > .hero-description { animation: intro-rise 720ms 250ms both cubic-bezier(.2,.8,.2,1); }
+.hero-copy > .hero-actions { animation: intro-rise 720ms 320ms both cubic-bezier(.2,.8,.2,1); }
+.hero-copy > .benefit-list { animation: intro-rise 720ms 400ms both cubic-bezier(.2,.8,.2,1); }
+.hero-copy > .hero-footnote { animation: intro-rise 720ms 470ms both cubic-bezier(.2,.8,.2,1); }
+/* Animate the workspace as a whole, leaving cards free to move on hover. */
+.hero-workspace { animation: intro-rise 780ms 250ms both cubic-bezier(.2,.8,.2,1); }
+
+/* Reveals are opt-in from JS; no-JS pages retain all their content. */
+.will-reveal {
+  opacity: 0;
+  transform: translateY(25px);
+  transition: opacity 750ms ease, transform 750ms cubic-bezier(.2,.8,.2,1);
+}
+.will-reveal.is-visible { opacity: 1; transform: none; }
+
+/* 3. Upload hover: entire card gently wiggles; cloud bobs, tilts and grows. */
+.upload-card {
+  transition: border-color 250ms, box-shadow 300ms, transform 300ms;
+  transform-origin: center center;
+}
+.dropzone {
+  transition: border-color 250ms, background-color 250ms, transform 350ms, box-shadow 350ms;
+}
+.upload-graphic { transform-origin: center center; }
+.upload-cloud-icon {
+  transition: background-color 300ms, box-shadow 300ms;
+  transform-origin: center center;
+  animation: cloud-idle 4200ms ease-in-out infinite;
+}
+@keyframes cloud-idle {
+  0%,100% { transform: translateY(0) rotate(-7deg); }
+  50% { transform: translateY(-6px) rotate(-4deg); }
+}
+@keyframes cloud-hover {
+  0%,100% { transform: translateY(0) rotate(-8deg) scale(1.06); }
+  25% { transform: translateY(-9px) rotate(-2deg) scale(1.14); }
+  50% { transform: translateY(-4px) rotate(4deg) scale(1.12); }
+  75% { transform: translateY(-11px) rotate(-3deg) scale(1.15); }
+}
+@keyframes upload-card-wiggle {
+  0%,100% { transform: translateY(-4px) rotate(-.23deg); }
+  50% { transform: translateY(-7px) rotate(.23deg); }
+}
+@keyframes ring-turn {
+  from { transform: rotate(-23deg); }
+  to { transform: rotate(337deg); }
+}
+@keyframes ring-turn-reverse {
+  from { transform: rotate(-23deg); }
+  to { transform: rotate(-383deg); }
+}
+@keyframes upload-error-shake {
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-6px); }
+  40%,80% { transform: translateX(6px); }
+}
+.upload-card.is-invalid { animation: upload-error-shake 460ms ease-in-out !important; }
+
+/* 4. Cards lift and wiggle; icons swell and rotate like the original UI. */
+@keyframes card-float-wiggle {
+  0%,100% { transform: translateY(-5px) rotate(-.20deg); }
+  50% { transform: translateY(-9px) rotate(.20deg); }
+}
+.method-icon,
+.process-icon,
+.benefit-icon,
+.metric-icon,
+.state-emblem,
+.brand-icon,
+.about-art-center,
+.about-art-badge {
+  transition: transform 400ms cubic-bezier(.34,1.56,.64,1),
+              background-color 260ms ease, box-shadow 260ms ease;
+}
+.method-card,
+.report-card,
+.process-step {
+  transition: transform 300ms cubic-bezier(.2,.8,.2,1),
+              box-shadow 300ms ease, border-color 260ms ease, background-color 260ms ease;
+}
+.method-card:is(:hover,.is-touched,.is-keyboard-active) .method-icon {
+  transform: rotate(-9deg) scale(1.17);
+  background: var(--lime);
+  box-shadow: 0 12px 23px rgba(171,211,45,.23);
+}
+.method-card:is(:hover,.is-touched,.is-keyboard-active) .method-icon svg { transform: scale(1.1); }
+.method-icon svg,
+.process-icon svg,
+.metric-icon svg { transition: transform 380ms cubic-bezier(.34,1.56,.64,1); }
+.method-card:is(:hover,.is-touched,.is-keyboard-active) .method-tag svg { transform: translate(3px,-3px); }
+.method-tag svg { transition: transform 250ms ease; }
+.process-step:is(:hover,.is-touched,.is-keyboard-active) .process-icon {
+  transform: rotate(-8deg) scale(1.15);
+  background: var(--lime);
+  box-shadow: 0 10px 21px rgba(171,211,45,.23);
+}
+.process-step:is(:hover,.is-touched,.is-keyboard-active) .process-icon svg { transform: scale(1.06); }
+.benefit-list li:is(:hover,.is-touched) .benefit-icon {
+  transform: rotate(-10deg) scale(1.16);
+  background: var(--lime);
+  box-shadow: 0 9px 15px rgba(171,211,45,.25);
+}
+.metric-row:is(:hover,.is-touched) {
+  transform: translateX(4px);
+  background-color: #f5fae9;
+  border-radius: 8px;
+}
+.metric-row { transition: transform 270ms ease, background-color 250ms ease; }
+.metric-row:is(:hover,.is-touched) .metric-icon { transform: rotate(-8deg) scale(1.18); background: var(--lime); }
+.report-card:is(:hover,.is-touched) .report-image-wrap img { transform: scale(1.075); }
+.report-image-wrap img { transition: transform 700ms cubic-bezier(.2,.8,.2,1); }
+.report-card:is(:hover,.is-touched) .state-emblem { transform: rotate(-11deg) scale(1.17); background: var(--lime); }
+.brand:hover .brand-icon { transform: rotate(-8deg) scale(1.09); }
+.about-art:is(:hover,.is-touched) .about-art-center { transform: rotate(-3deg) scale(1.06); }
+.about-art:is(:hover,.is-touched) .badge-left { transform: rotate(-20deg) scale(1.17); }
+.about-art:is(:hover,.is-touched) .badge-right { transform: rotate(19deg) scale(1.17); }
+.about-orbit { transition: transform 650ms ease; }
+.about-art:is(:hover,.is-touched) .about-orbit-one { transform: rotate(6deg); }
+.about-art:is(:hover,.is-touched) .about-orbit-two { transform: rotate(-39deg); }
+
+/* Buttons and navigation: tiny arrow glide / underline feedback. */
+.btn .icon { transition: transform 240ms cubic-bezier(.2,.8,.2,1); }
+.btn:is(:hover,:focus-visible) .icon { transform: translate(3px,-3px); }
+.nav-link::after { transition: transform 380ms cubic-bezier(.2,.8,.2,1); }
+
+/* 5. Hover-capable pointers get repeated wiggles while hovering. */
+@media (hover: hover) and (pointer: fine) {
+  .upload-card:hover,
+  .upload-card:focus-within:not(.is-invalid) {
+    border-color: #d3e4a8;
+    box-shadow: 0 24px 49px rgba(59,86,30,.13);
+    animation: upload-card-wiggle 1850ms ease-in-out infinite;
+  }
+  .upload-card:hover .dropzone,
+  .upload-card:focus-within .dropzone {
+    border-color: #a5c93a;
+    background: #f4fae4;
+    box-shadow: inset 0 0 23px rgba(207,235,136,.18);
+  }
+  .upload-card:hover .upload-cloud-icon,
+  .upload-card:focus-within .upload-cloud-icon {
+    animation: cloud-hover 1500ms ease-in-out infinite;
+  }
+  .upload-card:hover .ring-one,
+  .upload-card:focus-within .ring-one { animation: ring-turn 9000ms linear infinite; }
+  .upload-card:hover .ring-two,
+  .upload-card:focus-within .ring-two { animation: ring-turn-reverse 12500ms linear infinite; }
+  .method-card:hover,
+  .report-card:hover { animation: card-float-wiggle 2100ms ease-in-out infinite; }
+  .method-card:hover { border-color: #d0e3a2; box-shadow: 0 19px 40px rgba(59,86,30,.13); }
+  .report-card:hover { box-shadow: 0 21px 44px rgba(59,86,30,.13); }
+  .process-step:hover { animation: card-float-wiggle 2300ms ease-in-out infinite; border-color: #d5e4bc; }
+}
+
+/* Touch devices get a brief motion on tap, rather than a stuck hover animation. */
+.upload-card.is-touched { animation: upload-card-wiggle 900ms ease-in-out 2; }
+.upload-card.is-touched .upload-cloud-icon { animation: cloud-hover 900ms ease-in-out 2; }
+.upload-card.is-touched .dropzone { border-color:#a5c93a; background:#f4fae4; }
+.method-card.is-touched,
+.report-card.is-touched,
+.process-step.is-touched { animation: card-float-wiggle 900ms ease-in-out 2; }
+
+/* Prefer-reduced-motion should remove movement without removing the lime color. */
+@media (prefers-reduced-motion: reduce) {
+  .highlight::before { animation: none !important; transform: rotate(-1.5deg); }
+  .highlight svg path { animation: none !important; stroke-dashoffset: 0; }
+  .underline-accent::after { animation: none !important; transform: rotate(-2deg); }
+  .highlight-small,
+  .about-text h2 em { animation: none !important; background-size: 100% 100%; }
+  .will-reveal { opacity: 1 !important; transform: none !important; }
+  .upload-cloud-icon,
+  .upload-card,
+  .method-card,
+  .report-card,
+  .process-step { animation: none !important; }
+}
+
+
+/* AI image analysis loading animation */
+
+#analyzeButton.is-analyzing {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+#analyzeButton.is-analyzing::after {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-left: 10px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: middle;
+  animation: ai-spin 0.8s linear infinite;
+}
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #analyzeButton.is-analyzing::after {
+    animation: none;
+  }
+}
+
+
+/* Real AI detection confidence bars */
+
+.confidence-bars {
+  display: grid;
+  gap: 22px;
+  margin: 24px 0;
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(128, 128, 128, 0.07);
+}
+
+.confidence-bars[hidden] {
+  display: none;
+}
+
+.confidence-row {
+  display: grid;
+  gap: 10px;
+}
+
+.confidence-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.confidence-label strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.confidence-track {
+  width: 100%;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.16);
+}
+
+.confidence-fill {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.confidence-ai {
+  background: linear-gradient(90deg, #84cc16, #bef264);
+}
+
+.confidence-human {
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confidence-fill {
+    transition: none;
+  }
+}
+
+
+/* AI analysis statistics dashboard */
+
+.analytics-section {
+  padding: 80px 24px;
+}
+
+.analytics-container {
+  max-width: 1150px;
+  margin: 0 auto;
+}
+
+.analytics-container h2 {
+  font-size: clamp(28px, 4vw, 42px);
+  margin-bottom: 12px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 32px;
+}
+
+.analytics-card {
+  padding: 28px;
+  border-radius: 20px;
+  border: 1px solid rgba(128,128,128,0.18);
+  background: rgba(128,128,128,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.analytics-card span {
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+.analytics-card strong {
+  font-size: 36px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-history {
+  margin-top: 45px;
+}
+
+#analysisHistory {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+#analysisHistory li {
+  padding: 16px 20px;
+  border: 1px solid rgba(128,128,128,0.15);
+  border-radius: 12px;
+}
+
+.analytics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.analytics-actions button {
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .analytics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Compact SynthID verification section */
+
+.synthid-section {
+  padding: 28px 24px;
+}
+
+.synthid-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 30px;
+  border: 1px solid #e2e9d8;
+  border-radius: 22px;
+  background: #f5f9ea;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.synthid-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.synthid-eyebrow {
+  color: #668531;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+.synthid-content h2 {
+  margin: 8px 0;
+  color: #1b211d;
+  font-size: clamp(18px, 2vw, 23px);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.synthid-content p {
+  margin: 0;
+  color: #778174;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.synthid-action {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 14px 22px;
+  background: #1b211d;
+  color: #fff;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.synthid-action:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 700px) {
+  .synthid-inner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 22px;
+  }
+
+  .synthid-action {
+    width: 100%;
+  }
+}
