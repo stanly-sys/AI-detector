@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🛡️ AI Image Detector
+<img src="assets/readme-icons/brand.svg" alt="AI Image Detector logo" width="76" height="76" />
+
+# AI Image Detector
 
 ### AI-image classification · Content Credentials verification · Analysis analytics
 
@@ -20,7 +22,7 @@
 **Current detectors: [`Organika/sdxl-detector`](https://huggingface.co/Organika/sdxl-detector) and [`OwensLab/commfor-model-224`](https://huggingface.co/OwensLab/commfor-model-224).**  
 *Both remain available while their behavior is compared. No final model has been selected.*
 
-[Features](#-features) · [Quick Start](#-quick-start-with-docker) · [How It Works](#-how-it-works) · [API](#-api-reference) · [Security](#-security-notes) · [Troubleshooting](#-troubleshooting)
+[Features](#features) · [Quick Start](#quick-start-with-docker) · [How It Works](#how-it-works) · [API](#api-reference) · [Security](#security-notes) · [Troubleshooting](#troubleshooting)
 
 </div>
 
@@ -29,23 +31,23 @@
 > [!IMPORTANT]
 > This application provides **model estimates and provenance observations**, not proof that an image is authentic or AI-generated. **Community Forensics has appeared more reliable than the SDXL detector in the project’s preliminary manual tests, but it is not 100% accurate; this is not a formal benchmark result.** High scores do **not** guarantee correctness. Missing C2PA credentials do **not** imply that an image is human-created.
 
-## ✨ Features
+## <img src="assets/readme-icons/sparkles.svg" width="22" height="22" alt="" /> Features
 
 | Feature | What it does |
 |:--|:--|
-| 🖼️ **Image upload** | Drag-and-drop or select **JPEG, PNG, or WebP** images, with a **2 MB** application-level limit. |
-| 🧠 **Two AI detectors** | Runs **SDXL Detector** and **Community Forensics** as separate model options; the original SDXL model remains installed for comparison. |
-| 🎛️ **Model selection** | Choose **Both models**, **SDXL only**, or **Community only** in the upload interface. |
-| 📊 **Visual results** | Displays the selected model results, separate **AI** and **human** scores, and animated confidence bars. Use comparison mode to inspect differences. |
-| 🪪 **C2PA verification** | Uses [`c2patool`](https://github.com/contentauth/c2patool) to inspect signed Content Credentials and report their validation/trust status. |
-| 🧾 **Declared origin** | Reads supported C2PA `digitalSourceType` declarations, if available. |
-| 🗃️ **MySQL records** | Stores classification labels, scores, and timestamps; no need to retain the uploaded image. |
-| 📈 **Analytics** | Shows aggregate counts and model-score statistics from MySQL. |
-| 🕘 **Recent history** | Shows a limited recent-analysis history in the current browser's local storage. |
-| 🔗 **SynthID link** | Opens Google's external SynthID verification service; **automatic SynthID detection is not integrated**. |
-| 🐳 **Single container** | Runs Apache, PHP, MySQL, and Python under Supervisor in **one Ubuntu container**, without Docker Compose. |
+| <img src="assets/readme-icons/image.svg" width="19" height="19" alt="" /> **Image upload** | Drag-and-drop or select **JPEG, PNG, or WebP** images, with a **2 MB** application-level limit. |
+| <img src="assets/readme-icons/brain.svg" width="19" height="19" alt="" /> **Two AI detectors** | Runs **SDXL Detector** and **Community Forensics** as separate model options; the original SDXL model remains installed for comparison. |
+| <img src="assets/readme-icons/sliders.svg" width="19" height="19" alt="" /> **Model selection** | Choose **Both models**, **SDXL only**, or **Community only** in the upload interface. |
+| <img src="assets/readme-icons/chart.svg" width="19" height="19" alt="" /> **Visual results** | Displays the selected model results, separate **AI** and **human** scores, and animated confidence bars. Use comparison mode to inspect differences. |
+| <img src="assets/readme-icons/shield.svg" width="19" height="19" alt="" /> **C2PA verification** | Uses [`c2patool`](https://github.com/contentauth/c2patool) to inspect signed Content Credentials and report their validation/trust status. |
+| <img src="assets/readme-icons/file-text.svg" width="19" height="19" alt="" /> **Declared origin** | Reads supported C2PA `digitalSourceType` declarations, if available. |
+| <img src="assets/readme-icons/database.svg" width="19" height="19" alt="" /> **MySQL records** | Stores classification labels, scores, and timestamps; no need to retain the uploaded image. |
+| <img src="assets/readme-icons/trending-up.svg" width="19" height="19" alt="" /> **Analytics** | Shows aggregate counts and model-score statistics from MySQL. |
+| <img src="assets/readme-icons/clock.svg" width="19" height="19" alt="" /> **Recent history** | Shows a limited recent-analysis history in the current browser's local storage. |
+| <img src="assets/readme-icons/link.svg" width="19" height="19" alt="" /> **SynthID link** | Opens Google's external SynthID verification service; **automatic SynthID detection is not integrated**. |
+| <img src="assets/readme-icons/boxes.svg" width="19" height="19" alt="" /> **Single container** | Runs Apache, PHP, MySQL, and Python under Supervisor in **one Ubuntu container**, without Docker Compose. |
 
-## 🧭 How It Works
+## <img src="assets/readme-icons/workflow.svg" width="22" height="22" alt="" /> How It Works
 
 ```mermaid
 flowchart TD
@@ -79,7 +81,7 @@ flowchart TD
 > [!NOTE]
 > `valid_untrusted` means the credentials passed integrity checks **but their signer is not trusted** by the configured trust anchors. `not_found` means no embedded credentials were detected; it is **not** a “real photo” verdict.
 
-## 🧰 Technology Stack
+## <img src="assets/readme-icons/layers.svg" width="22" height="22" alt="" /> Technology Stack
 
 | Layer | Technology |
 |:--|:--|
@@ -95,7 +97,7 @@ flowchart TD
 | Process manager | Supervisor |
 | Container orchestration | Docker CLI (**no Docker Compose**) |
 
-## 📁 Project Structure
+## <img src="assets/readme-icons/folder.svg" width="22" height="22" alt="" /> Project Structure
 
 ```text
 AI/
@@ -115,13 +117,14 @@ AI/
 ├── assets/
 │   ├── css/                  # Layout, styles and animations
 │   ├── js/                   # Upload, results and dashboard behavior
-│   └── img/                  # Website image assets
+│   ├── img/                  # Website image assets and favicon
+│   └── readme-icons/         # GitHub README SVG icons
 └── README.md
 ```
 
 Pretrained model weights belong in the **persistent Docker model volume**, not in Git. The existing SDXL model uses `/opt/models/sdxl-detector/`; the Community Forensics installation uses its own location as configured in the project’s current model adapter. Do not remove either model while comparing them.
 
-## 🚀 Quick Start with Docker
+## <img src="assets/readme-icons/rocket.svg" width="22" height="22" alt="" /> Quick Start with Docker
 
 These commands assume **Windows + Docker Desktop (Linux containers) + Git Bash**. Run them from the project root, `D:\AI`.
 
@@ -249,7 +252,7 @@ curl -i --max-time 180 \
 
 **Expected:** HTTP `200` with the executed model result(s), plus provenance information when checked. On the website, test **Both models**, **SDXL only**, and **Community only**. CPU inference can be slow; the currently configured model adapter and security limits control execution.
 
-## 🔌 API Reference
+## <img src="assets/readme-icons/plug.svg" width="22" height="22" alt="" /> API Reference
 
 ### `POST /api/analyze.php`
 
@@ -298,7 +301,7 @@ curl -sS http://127.0.0.1:8080/api/stats.php
 
 *Example values only.* The stored analysis count includes successful requests, not a ground-truth measure of detection accuracy.
 
-## 🔬 Model Comparison and Current Observations
+## <img src="assets/readme-icons/microscope.svg" width="22" height="22" alt="" /> Model Comparison and Current Observations
 
 | Model | Purpose | What has been observed so far | Current decision |
 |:--|:--|:--|:--|
@@ -316,7 +319,7 @@ curl -sS http://127.0.0.1:8080/api/stats.php
 4. For a fair final decision, collect images with **known real or AI-generated origins** and calculate accuracy, precision, recall, F1, false-positive rate, and processing time for each model.
 5. **Do not delete either model yet.** Model selection and removal are postponed until these tests are complete.
 
-## 🪪 Interpreting C2PA Results
+## <img src="assets/readme-icons/shield.svg" width="22" height="22" alt="" /> Interpreting C2PA Results
 
 | `c2pa.status` | Interpretation |
 |:--|:--|
@@ -342,7 +345,7 @@ If an origin declaration is available, `c2pa.origin.type` can contain:
 
 The website links to [Google's SynthID Detector](https://synthid.com/) for **separate manual verification**. The backend deliberately reports `not_configured`: it does **not** automatically inspect SynthID watermarks.
 
-## 🔒 Security Notes
+## <img src="assets/readme-icons/lock.svg" width="22" height="22" alt="" /> Security Notes
 
 The application has security-focused design elements, including server-side image validation, limited file size, temporary upload cleanup, parameterized database writes, a restricted MySQL application account, and an Apache security configuration.
 
@@ -358,7 +361,7 @@ The application has security-focused design elements, including server-side imag
 
 Only perform security testing on systems you own or have explicit permission to test.
 
-## 🧪 Testing Checklist
+## <img src="assets/readme-icons/clipboard-check.svg" width="22" height="22" alt="" /> Testing Checklist
 
 - [ ] Upload a known JPEG/PNG/WebP image successfully.
 - [ ] Confirm AI and human model scores appear for **Community only**, **SDXL only**, and **Both models**.
@@ -376,7 +379,7 @@ Only perform security testing on systems you own or have explicit permission to 
 
 A known C2PA test image is available in the [official c2patool samples](https://github.com/contentauth/c2patool/tree/main/sample). It may be **valid but signed by an untrusted test certificate**—that is a useful expected test case, not necessarily an error.
 
-## ♻️ Updating or Restarting the Container
+## <img src="assets/readme-icons/refresh.svg" width="22" height="22" alt="" /> Updating or Restarting the Container
 
 ### Stop/start without rebuilding
 
@@ -408,7 +411,7 @@ MSYS_NO_PATHCONV=1 docker run -d \
 > [!CAUTION]
 > Do **not** run `docker volume rm ai-detector-mysql-data` or `docker volume rm ai-detector-models` when upgrading. Deleting these volumes can remove your analysis records or pretrained model weights.
 
-## 🛠️ Troubleshooting
+## <img src="assets/readme-icons/wrench.svg" width="22" height="22" alt="" /> Troubleshooting
 
 <details>
 <summary><strong>HTTP 500 when analyzing an image</strong></summary>
@@ -461,13 +464,13 @@ Use `MSYS_NO_PATHCONV=1` before Docker commands that include Linux filesystem pa
 
 </details>
 
-## 🗺️ Project Scope & Next Steps
+## <img src="assets/readme-icons/map.svg" width="22" height="22" alt="" /> Project Scope & Next Steps
 
 This repository revision supports **two selectable detection models**: SDXL Detector and Community Forensics. **Community Forensics has performed better in the project owner’s preliminary hands-on checks, but its accuracy is not 100% and has not been formally measured.** Both models remain present while comparison continues.
 
 Future work includes **independent labeled-dataset evaluation**, a documented final model selection, better inference performance, further security testing, richer provenance details, and authorized automatic watermark integrations where available.
 
-## 📚 References
+## <img src="assets/readme-icons/book.svg" width="22" height="22" alt="" /> References
 
 - [Organika SDXL Detector — Hugging Face](https://huggingface.co/Organika/sdxl-detector)
 - [OwensLab Community Forensics — Hugging Face](https://huggingface.co/OwensLab/commfor-model-224)
@@ -480,7 +483,7 @@ Future work includes **independent labeled-dataset evaluation**, a documented fi
 
 <div align="center">
 
-**Built as personal project to explore AI-image classification and verifiable content provenance.**
+**Built as a personal project to explore AI-image classification and verifiable content provenance.**
 
 *Compare both models critically. Neither is infallible. Verify provenance independently and preserve test evidence.*
 

@@ -18,6 +18,8 @@ require __DIR__ . '/includes/icons.php';
   <meta name="theme-color" content="#f4f7ed">
   <meta name="description" content="AI Image Detector: an approachable interface for examining digital watermarks, image provenance, and machine-learning predictions.">
   <title><?= esc($siteName) ?> Look closer. Know more.</title>
+  <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+  <link rel="icon" type="image/png" href="/assets/img/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -140,27 +142,54 @@ require __DIR__ . '/includes/icons.php';
       <section class="comparison-section" id="model-comparison" aria-labelledby="comparisonTitle">
         <div class="comparison-container">
           <div class="comparison-heading">
-            <div><p class="section-kicker"><span></span> SAME IMAGE, SEPARATE RESULTS</p><h2 id="comparisonTitle">AI Model Comparison</h2></div>
+            <div>
+              <p class="section-kicker"><span></span> SAME IMAGE, SEPARATE RESULTS</p>
+              <h2 id="comparisonTitle">AI Model Comparison</h2>
+            </div>
             <p>Scores are model outputs, not proof of image origin. No combined score is calculated.</p>
           </div>
           <div class="comparison-grid" aria-live="polite">
             <article class="model-card" id="card-sdxl_detector" data-model="sdxl_detector">
-              <div class="model-card-heading"><div><span class="small-overline">MODEL A</span><h3>SDXL Detector</h3></div><span class="model-status" id="sdxl_detector-status">Waiting</span></div>
+              <div class="model-card-heading">
+                <div><span class="small-overline">MODEL A</span>
+                  <h3>SDXL Detector</h3>
+                </div><span class="model-status" id="sdxl_detector-status">Waiting</span>
+              </div>
               <p class="model-prediction" id="sdxl_detector-prediction">No analysis run yet</p>
-              <div class="model-score-row"><div><span>AI-generated</span><strong id="sdxl_detector-ai-score">—</strong></div><div class="model-score-track" role="progressbar" aria-label="SDXL AI-generated score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="sdxl_detector-ai-fill"></span></div></div>
-              <div class="model-score-row"><div><span>Human-created</span><strong id="sdxl_detector-human-score">—</strong></div><div class="model-score-track" role="progressbar" aria-label="SDXL human-created score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="sdxl_detector-human-fill"></span></div></div>
+              <div class="model-score-row">
+                <div><span>AI-generated</span><strong id="sdxl_detector-ai-score">—</strong></div>
+                <div class="model-score-track" role="progressbar" aria-label="SDXL AI-generated score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="sdxl_detector-ai-fill"></span></div>
+              </div>
+              <div class="model-score-row">
+                <div><span>Human-created</span><strong id="sdxl_detector-human-score">—</strong></div>
+                <div class="model-score-track" role="progressbar" aria-label="SDXL human-created score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="sdxl_detector-human-fill"></span></div>
+              </div>
               <div class="model-card-footer"><span id="sdxl_detector-time">Processing time: —</span><span id="sdxl_detector-version"></span></div>
             </article>
             <article class="model-card" id="card-community_forensics" data-model="community_forensics">
-              <div class="model-card-heading"><div><span class="small-overline">MODEL B</span><h3>Community Forensics</h3></div><span class="model-status" id="community_forensics-status">Waiting</span></div>
+              <div class="model-card-heading">
+                <div><span class="small-overline">MODEL B</span>
+                  <h3>Community Forensics</h3>
+                </div><span class="model-status" id="community_forensics-status">Waiting</span>
+              </div>
               <p class="model-prediction" id="community_forensics-prediction">No analysis run yet</p>
-              <div class="model-score-row"><div><span>AI-generated</span><strong id="community_forensics-ai-score">—</strong></div><div class="model-score-track" role="progressbar" aria-label="Community Forensics AI-generated score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="community_forensics-ai-fill"></span></div></div>
-              <div class="model-score-row"><div><span>Human-created</span><strong id="community_forensics-human-score">—</strong></div><div class="model-score-track" role="progressbar" aria-label="Community Forensics human-created score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="community_forensics-human-fill"></span></div></div>
+              <div class="model-score-row">
+                <div><span>AI-generated</span><strong id="community_forensics-ai-score">—</strong></div>
+                <div class="model-score-track" role="progressbar" aria-label="Community Forensics AI-generated score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="community_forensics-ai-fill"></span></div>
+              </div>
+              <div class="model-score-row">
+                <div><span>Human-created</span><strong id="community_forensics-human-score">—</strong></div>
+                <div class="model-score-track" role="progressbar" aria-label="Community Forensics human-created score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="community_forensics-human-fill"></span></div>
+              </div>
               <div class="model-card-footer"><span id="community_forensics-time">Processing time: —</span><span id="community_forensics-version"></span></div>
             </article>
           </div>
           <p class="comparison-outcome" id="comparisonOutcome" role="status">Choose an image and run one or both models to compare their results.</p>
-          <div class="evaluation-placeholder"><h3>Measured model performance</h3><p id="evaluationState">Not evaluated yet — labeled test data required.</p><div id="evaluationResults" hidden></div></div>
+          <div class="evaluation-placeholder">
+            <h3>Measured model performance</h3>
+            <p id="evaluationState">Not evaluated yet — labeled test data required.</p>
+            <div id="evaluationResults" hidden></div>
+          </div>
         </div>
       </section>
 
