@@ -86,11 +86,9 @@ RUN mkdir -p /etc/c2pa \
 
 # Copy PHP frontend into Apache's web directory
 COPY index.php /var/www/html/
-RUN chmod 644 /var/www/html/index.php
+
 COPY assets/ /var/www/html/assets/
-# Allow Apache to read public website assets
-RUN find /var/www/html/assets -type d -exec chmod 755 {} + \
-    && find /var/www/html/assets -type f -exec chmod 644 {} +
+
 COPY includes/ /var/www/html/includes/
 
 # Copy PHP backend API into Apache's web directory
@@ -129,6 +127,22 @@ COPY apache-prefork.conf /etc/apache2/conf-available/ai-prefork.conf
 RUN a2enmod headers reqtimeout \
     && a2enconf ai-security ai-prefork
 
+# Configure permissions for all website source files
+
+RUN chmod 644 /var/www/html/index.php \
+    && find /var/www/html/assets -type d -exec chmod 755 {} + \
+    && find /var/www/html/assets -type f -exec chmod 644 {} + \
+    && find /var/www/html/api /var/www/html/includes \
+       -type d -exec chmod 755 {} + \
+    && find /var/www/html/api /var/www/html/includes \
+       -type f -exec chmod 644 {} +
+
+# Verify Apache can read essential application files
+
+RUN runuser -u www-data -- test -r /var/www/html/index.php \
+    && runuser -u www-data -- test -r /var/www/html/api/stats.php \
+    && runuser -u www-data -- test -r /var/www/html/assets/img/favicon.png
+    
 EXPOSE 80
 
 CMD ["/usr/bin/supervisord", "-n"]
