@@ -88,6 +88,9 @@ RUN mkdir -p /etc/c2pa \
 COPY index.php /var/www/html/
 RUN chmod 644 /var/www/html/index.php
 COPY assets/ /var/www/html/assets/
+# Allow Apache to read public website assets
+RUN find /var/www/html/assets -type d -exec chmod 755 {} + \
+    && find /var/www/html/assets -type f -exec chmod 644 {} +
 COPY includes/ /var/www/html/includes/
 
 # Copy PHP backend API into Apache's web directory
