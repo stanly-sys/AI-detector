@@ -86,11 +86,14 @@ RUN mkdir -p /etc/c2pa \
 
 # Copy PHP frontend into Apache's web directory
 COPY index.php /var/www/html/
+RUN chmod 644 /var/www/html/index.php
 COPY assets/ /var/www/html/assets/
 COPY includes/ /var/www/html/includes/
 
 # Copy PHP backend API into Apache's web directory
 COPY api/ /var/www/html/api/
+
+
 
 # Keep temporary uploads private and writable only by Apache's PHP worker.
 RUN install -d -o www-data -g www-data -m 0700 /tmp/ai-detector-uploads /tmp/ai-detector-limits \
