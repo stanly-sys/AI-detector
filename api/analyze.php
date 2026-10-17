@@ -105,20 +105,24 @@ $modelSelection = (string) ($_POST['models'] ?? 'both');
 if (!in_array($modelSelection, MODEL_SELECTIONS, true)) {
     respond(400, ['success' => false, 'error' => 'Unsupported model selection.']);
 }
+
 if (isset($_SERVER['HTTP_ORIGIN'])) {
-    $origin = parse_url((string) $_SERVER['HTTP_ORIGIN']);
-    $isHttps = !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
-    $requestScheme = $isHttps ? 'https' : 'http';
-    $requestHost = strtolower((string) parse_url('http://' . (string) ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST));
-    $requestPort = (int) ($_SERVER['SERVER_PORT'] ?? ($isHttps ? 443 : 80));
-    $originScheme = strtolower((string) ($origin['scheme'] ?? ''));
-    $originHost = strtolower((string) ($origin['host'] ?? ''));
-    $originPort = (int) ($origin['port'] ?? ($originScheme === 'https' ? 443 : 80));
-    if ($originHost === '' || $originScheme !== $requestScheme || $originPort !== $requestPort || !hash_equals($requestHost, $originHost)) {
+    $requestOrigin = trim((string) $_SERVER['HTTP_ORIGIN']);
+    $allowedOrigin = trim((string) (getenv('APP_PUBLIC_ORIGIN') ?: ''));
+
+    if (
+        $allowedOrigin === '' ||
+        !hash_equals($allowedOrigin, $requestOrigin)
+    ) {
         logSecurity('cross-origin analysis request rejected');
-        respond(403, ['success' => false, 'error' => 'Cross-origin requests are not allowed.']);
+
+        respond(403, [
+            'success' => false,
+            'error' => 'Cross-origin requests are not allowed.'
+        ]);
     }
 }
+
 if (!takeRateLimit()) {
     logSecurity('analysis rate limit exceeded');
     header('Retry-After: ' . RATE_WINDOW);
